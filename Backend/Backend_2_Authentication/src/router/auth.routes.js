@@ -26,5 +26,26 @@ router.post('/register',async(req,res)=>{
 
 })
 
+router.get('/me',async (req,res)=>{
+    const token=req.headers.authorization
+
+    const verifiedToken= jwt.verify(token,config.JWT_SECRET)
+    console.log(verifiedToken);
+    
+    const user=await UserModel.findById(verifiedToken.id)
+
+    res.status(200).json({
+        message:"User fetched Successfully",
+        data:{
+            user:{
+                email:user.email,
+                name:user.name
+            }
+        }
+    })
+
+
+})
+
 
 export default router
