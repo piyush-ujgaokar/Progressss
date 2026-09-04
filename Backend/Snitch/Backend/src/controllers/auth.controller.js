@@ -57,6 +57,43 @@ const registerController = async (req, res) => {
   }
 };
 
+const loginController=async(req,res)=>{
+    const {email,password}=req.body
+
+    if(!email,!password){
+        return res.status(400).json({
+            message:"Some Fields Are Empty"
+        })
+    }
+
+    const user=await userModel.findOne({email}).select("+password")
+
+    if(!user){
+        return res.status(400).json({
+            message:"Invalid Email Or Password"
+        })
+    }
+
+    const isPasswordValid=await bcrypt.compare(password,user.password)
+    if(!isPasswordValid){
+        return res.status(400).json({
+            message:"Inavlid Email Or Password"
+        })
+    }
+
+    const token=jwt.sign({id:user._id,role:user.role},config.JWT_SECRET)
+
+    return res.status(200).json({
+        message:"User Login Successfully",
+        user:{
+            email:user.email,
+            token:token
+        }
+    })
+
+}
+
 export default {
   registerController,
+  loginController
 };
