@@ -95,5 +95,5 @@ const loginController=async(req,res)=>{
 
 export default {
   registerController,
-  loginController
+  loginControlle
 };
