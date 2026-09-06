@@ -7,7 +7,6 @@ export const useAuth=()=>{
 
     const loginSubmit=(data)=>{
         console.log("login data",data);
-        reset()
         
     }
 
