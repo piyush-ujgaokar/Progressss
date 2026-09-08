@@ -3,13 +3,12 @@ import { uploadFile } from "../services/storage.services.js";
 
 export const createProduct = async (req, res) => {
   const user = req.user;
-  console.log(user);
 
-  // if(user.role !== 'seller'){
-  //     return res.status(401).json({
-  //         message:"Only Seller can Create Products"
-  //     })
-  // }
+  if(user.role !== 'seller'){
+      return res.status(401).json({
+          message:"Only Seller can Create Products"
+      })
+  }
 
   const {
     title,
@@ -21,7 +20,7 @@ export const createProduct = async (req, res) => {
 
   const files = req.files;
 
-  if (files.length === 0) {
+  if (!files || files.length === 0) {
     return res.status(400).json({
       message: "At Least One image is required",
     });
@@ -35,7 +34,7 @@ export const createProduct = async (req, res) => {
         file.buffer.toString("base64"),
         fileName,
       );
-
+      
       return {
         url: response.url,
         imageKitId: response.fileId,

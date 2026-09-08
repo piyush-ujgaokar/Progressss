@@ -24,10 +24,20 @@ const productSchema = new mongoose.Schema({
     required: true,
   },
   images: [
-    {
-      type: String,
-      required: true,
-    },
+        {
+            imageKitId: {
+                type: String,
+                required: true
+            },
+            url: {
+                type: String,
+                required: true
+            },
+            order: {
+                type: Number,
+                required: true
+            }
+        }
   ],
   isPublished: {
     type: Boolean,

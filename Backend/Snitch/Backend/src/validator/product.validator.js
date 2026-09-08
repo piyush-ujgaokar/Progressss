@@ -37,11 +37,33 @@ export const productValidationRoules = [
     .isIn(["USD", "EUR", "CAD", "INR"])
     .withMessage("Currency must be USD, EUR, CAD or INR"),
 
-  body("categories").notEmpty().withMessage("category is Required"),
+  body("categories")
+  .isArray().withMessage("Categories must be an array of string"),
+  body("categories.*")
+  .isString()
+  .withMessage("Each category must be a string")
+  .notEmpty()
+  .withMessage("Category cannot be empty"),
+,
 
   body("sizes")
     .isArray({ min: 1 })
     .withMessage("Sizes must be a non-empty array"),
+    // .custom((value)=>{
+    //     value.forEach((size)=>{
+    //         if(!size || typeof size !== "object" || !size.size || !size.stock){
+    //             throw new Error (" Each size must be an object with size and stock properties")
+    //         }
+
+    //         if(typeof size.size !== "string" || size.size.trim() === ""){
+    //             throw new Error ("size must be a non-empty string")
+    //         }
+
+    //         if(typeof size.stock !== "number || size.stock < 0"){
+    //             throw new Error ("Stock must be non-negative number")
+    //         }
+    //     })
+    // }),
 
   body("sizes.*.size")
     .notEmpty()
@@ -54,4 +76,6 @@ export const productValidationRoules = [
     .withMessage("Stock is required")
     .isInt({ min: 0 })
     .withMessage("Stock must be a number greater than or equal to 0"),
+
+    validate
 ];

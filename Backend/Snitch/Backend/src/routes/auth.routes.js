@@ -1,7 +1,6 @@
 import {Router} from 'express'
 import authController, { getMe } from '../controllers/auth.controller.js'
 import authenticate from '../middleware/auth.middleware.js'
-import validation from '../middleware/validaton.middleware.js'
 import { loginValidationRules, registerValidationRules } from '../validator/auth.validator.js'
 
 
