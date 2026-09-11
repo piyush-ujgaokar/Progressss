@@ -8,9 +8,7 @@ const router = Router()
 
 router.use(authenticate)
 
-/**
- * @POST /api/cart/add/product/:productId
- */
+
 router.post('/add/product/:productId', addToCartValidator, addProductToCart)
 
 export default router;
