@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Two Shelves, One Drawer — BST vs B-Tree, animated</title>
+<style>
+ 
+  @import url('https://fonts.googleapis.com/css2?family=Bitter:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+ 
+  :root{
+    --wood-dark:   #2b2119;
+    --wood-mid:    #3a2c20;
+    --card:        #f6f0e2;
+    --card-hi:     #fbf7ec;
+    --ink:         #241f19;
+    --ink-soft:    #574c3f;
+    --brass:       #b08d57;
+    --brass-hi:    #d4b06f;
+    --teal:        #3c6e64;
+    --teal-deep:   #2a4f48;
+    --stamp:       #a23b2e;
+    --rule:        #d9cdad;
+    --shadow:      rgba(20,14,6,0.35);
+  }
+ 
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at top left, rgba(255,255,255,0.03), transparent 60%),
+      repeating-linear-gradient(90deg, var(--wood-dark) 0 2px, var(--wood-mid) 2px 90px);
+    color:var(--ink);
+    font-family:'Source Serif 4', Georgia, serif;
+    line-height:1.6;
+  }
+  h1,h2,h3{ font-family:'Bitter', Georgia, serif; margin:0; }
+  code, .mono{ font-family:'JetBrains Mono', monospace; }
+ 
+  .wrap{ max-width:1180px; margin:0 auto; padding:44px 22px 90px; }
+ 
+  .hero{
+    background:var(--card-hi);
+    border-radius:3px;
+    padding:36px 40px 30px;
+    box-shadow:0 18px 40px var(--shadow);
+    margin-bottom:24px;
+  }
+  .hero .tag{
+    display:inline-block; font-size:11px; color:var(--stamp);
+    border:1px solid var(--stamp); border-radius:2px; padding:3px 8px;
+    transform:rotate(-2deg); margin-bottom:16px; font-family:'JetBrains Mono',monospace;
+  }
+  .hero h1{ font-size:32px; margin-bottom:10px; max-width:20ch; }
+  .hero p{ color:var(--ink-soft); max-width:64ch; margin:0; font-size:16.5px; }
+ 
+  /* ---------- controls bar ---------- */
+  .controls{
+    background:var(--card);
+    border-radius:3px;
+    padding:18px 26px;
+    box-shadow:0 10px 26px var(--shadow);
+    margin-bottom:22px;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:14px;
+  }
+  .btn{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12.5px;
+    border:none;
+    padding:9px 16px;
+    border-radius:3px;
+    cursor:pointer;
+    transition:filter .15s ease;
+  }
+  .btn:hover{ filter:brightness(1.08); }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; }
+  .btn.primary{ background:var(--teal); color:var(--card-hi); }
+  .btn.ghost{ background:transparent; color:var(--teal-deep); border:1px solid var(--teal); }
+  .seq{
+    display:flex; gap:6px; flex-wrap:wrap; margin-left:auto;
+    font-family:'JetBrains Mono', monospace; font-size:12px;
+  }
+  .seq .num{
+    padding:4px 8px; border-radius:2px; background:var(--card-hi);
+    border:1px solid var(--rule); color:var(--ink-soft);
+  }
+  .seq .num.done{ background:var(--teal); color:var(--card-hi); border-color:var(--teal); }
+  .seq .num.next{ background:var(--brass-hi); color:var(--ink); border-color:var(--brass); }
+ 
+  .status{
+    font-size:14px; color:var(--ink-soft); font-style:italic;
+    min-height:20px;
+  }
+  .status b{ color:var(--stamp); font-style:normal; }
+ 
+  /* ---------- panels ---------- */
+  .panels{ display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+  @media (max-width:880px){ .panels{ grid-template-columns:1fr; } }
+ 
+  .panel{
+    background:var(--card);
+    border-radius:3px;
+    box-shadow:0 10px 26px var(--shadow);
+    overflow:hidden;
+  }
+  .panel-head{
+    padding:18px 22px 14px;
+    border-bottom:1px solid var(--rule);
+    display:flex; justify-content:space-between; align-items:baseline;
+  }
+  .panel-head h2{ font-size:18px; }
+  .panel-head .stat{ font-family:'JetBrains Mono', monospace; font-size:12.5px; color:var(--teal-deep); }
+  .canvas-wrap{
+    background:var(--card-hi);
+    min-height:340px;
+    padding:10px;
+    overflow-x:auto;
+  }
+  svg.tree-svg{ display:block; width:100%; height:340px; }
+ 
+  .panel-foot{
+    padding:12px 22px 18px;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    border-top:1px solid var(--rule);
+  }
+ 
+  /* ---------- svg node styling ---------- */
+  .edge{ stroke:#c9bd9e; stroke-width:1.6; }
+  .bst-node circle{ fill:var(--card-hi); stroke:var(--brass); stroke-width:1.6; }
+  .bst-node text{ font-family:'JetBrains Mono',monospace; font-size:12px; fill:var(--ink); text-anchor:middle; }
+  .bt-node rect{ fill:var(--card-hi); stroke:var(--brass); stroke-width:1.6; }
+  .bt-node .keysep{ stroke:var(--rule); stroke-width:1; }
+  .bt-node text{ font-family:'JetBrains Mono',monospace; font-size:12px; fill:var(--ink); text-anchor:middle; }
+ 
+  .flash circle, .flash rect{ animation: pulse 0.9s ease; }
+  @keyframes pulse{
+    0%{ fill:var(--brass-hi); stroke:var(--stamp); }
+    100%{ fill:var(--card-hi); stroke:var(--brass); }
+  }
+  .fade-in{ animation: fadein 0.5s ease; }
+  @keyframes fadein{ from{ opacity:0; } to{ opacity:1; } }
+ 
+  /* ---------- explainer cards ---------- */
+  .explain{
+    display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:24px;
+  }
+  @media (max-width:880px){ .explain{ grid-template-columns:1fr; } }
+  .explain .card{
+    background:var(--card); border-radius:3px; padding:24px 26px;
+    box-shadow:0 10px 26px var(--shadow);
+  }
+  .explain .card h3{ font-size:15.5px; color:var(--teal-deep); margin-bottom:8px; }
+  .explain .card p{ font-size:14.5px; color:var(--ink); margin:0 0 8px; }
+  .explain .card p.muted{ color:var(--ink-soft); font-size:13.5px; }
+ 
+  footer{ text-align:center; color:#8a7a63; font-size:12.5px; margin-top:28px; font-family:'JetBrains Mono',monospace; }
+ 
+  @media (prefers-reduced-motion: reduce){
+    .flash circle, .flash rect, .fade-in{ animation:none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+ 
+  <div class="hero">
+    <span class="tag">field notes — live diagram</span>
+    <h1>Same eight numbers, two very different shelves.</h1>
+    <p>Insert the sequence <code>10, 20, 5, 6, 12, 30, 7, 17</code> into a plain binary search tree on the left, and into a B-tree (max 3 keys per node) on the right, one number at a time — and watch what each structure does to stay searchable.</p>
+  </div>
+ 
+  <div class="controls">
+    <button class="btn primary" id="btnNext">Insert next →</button>
+    <button class="btn ghost" id="btnPlay">▶ Play all</button>
+    <button class="btn ghost" id="btnReset">↺ Reset</button>
+    <div class="seq" id="seqTrack"></div>
+  </div>
+ 
+  <p class="status" id="status">Ready. Click <b>Insert next</b> to begin, or <b>Play all</b> to watch the whole sequence.</p>
+ 
+  <div class="panels">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Binary search tree</h2>
+        <span class="stat" id="bstStat">height 0 · 0 nodes</span>
+      </div>
+      <div class="canvas-wrap"><svg class="tree-svg" id="bstSvg" viewBox="0 0 560 340"></svg></div>
+      <div class="panel-foot">One key per node. A new key always becomes a new leaf — the tree never reshapes itself, so a bad insertion order can make it deep and lopsided.</div>
+    </div>
+ 
+    <div class="panel">
+      <div class="panel-head">
+        <h2>B-tree (order 4)</h2>
+        <span class="stat" id="btStat">height 0 · 0 nodes</span>
+      </div>
+      <div class="canvas-wrap"><svg class="tree-svg" id="btSvg" viewBox="0 0 560 340"></svg></div>
+      <div class="panel-foot">Up to 3 keys share a node. When a node would need a 4th, it splits in two and pushes its middle key up — which is how the tree grows sideways before it grows down.</div>
+    </div>
+  </div>
+ 
+  <div class="explain">
+    <div class="card">
+      <h3>What to watch for</h3>
+      <p>Notice the BST's left branch: 10 → 5 → 6 → 7 forms a straight, deepening chain, because every one of those values happens to be smaller than the one before it. Nothing in a plain BST corrects for that.</p>
+      <p class="muted">In the worst case — data inserted in sorted order — a BST degrades into a straight line: a linked list wearing a tree's name, with O(n) lookups instead of O(log n).</p>
+    </div>
+    <div class="card">
+      <h3>Why the B-tree stays flat</h3>
+      <p>The B-tree never lets a node overflow silently. The moment a node would hold a 4th key, it splits into two 1-key nodes and promotes the middle value — which is exactly the split you'll see happen on insert #4 and again near the end.</p>
+      <p class="muted">This is also why database indexes are B-trees rather than binary trees: predictable, shallow depth regardless of insertion order matters far more than a database can bet on data arriving in a "nice" order.</p>
+    </div>
+  </div>
+ 
+  <footer>index card catalog · companion diagram · reshuffled 2026</footer>
+</div>
+ 
+<script>
+(function(){
+  var SEQUENCE = [10, 20, 5, 6, 12, 30, 7, 17];
+  var MAX_KEYS = 3; // B-tree order 4: max 3 keys, max 4 children
+ 
+  // ===================== BST =====================
+  var bstRoot = null;
+  function bstInsert(node, val){
+    if(!node) return { val: val, left:null, right:null };
+    if(val < node.val) node.left = bstInsert(node.left, val);
+    else if(val > node.val) node.right = bstInsert(node.right, val);
+    return node;
+  }
+  function bstHeight(node){ return node ? 1 + Math.max(bstHeight(node.left), bstHeight(node.right)) : 0; }
+  function bstCount(node){ return node ? 1 + bstCount(node.left) + bstCount(node.right) : 0; }
+ 
+  function layoutBST(node, depth, ctx, spacing){
+    if(!node) return;
+    layoutBST(node.left, depth+1, ctx, spacing);
+    node.x = ctx.next * spacing + 40;
+    node.y = depth * 76 + 34;
+    ctx.next++;
+    layoutBST(node.right, depth+1, ctx, spacing);
+  }
+ 
+  function renderBST(highlight){
+    var svg = document.getElementById('bstSvg');
+    svg.innerHTML = '';
+    if(!bstRoot){
+      document.getElementById('bstStat').textContent = 'height 0 · 0 nodes';
+      return;
+    }
+    var ctx = { next:0 };
+    layoutBST(bstRoot, 0, ctx, 56);
+    var width = Math.max(560, ctx.next * 56 + 60);
+    svg.setAttribute('viewBox', '0 0 ' + width + ' 340');
+ 
+    var edgesG = document.createElementNS('http://www.w3.org/2000/svg','g');
+    var nodesG = document.createElementNS('http://www.w3.org/2000/svg','g');
+ 
+    function walk(node){
+      if(!node) return;
+      if(node.left){
+        edgesG.appendChild(line(node.x, node.y, node.left.x, node.left.y));
+        walk(node.left);
+      }
+      if(node.right){
+        edgesG.appendChild(line(node.x, node.y, node.right.x, node.right.y));
+        walk(node.right);
+      }
+      var g = document.createElementNS('http://www.w3.org/2000/svg','g');
+      g.setAttribute('class', 'bst-node' + (node.val === highlight ? ' flash' : ''));
+      g.setAttribute('transform', 'translate(' + node.x + ',' + node.y + ')');
+      var c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('r', 16);
+      var t = document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('dy', 4);
+      t.textContent = node.val;
+      g.appendChild(c); g.appendChild(t);
+      nodesG.appendChild(g);
+    }
+    walk(bstRoot);
+    svg.appendChild(edgesG);
+    svg.appendChild(nodesG);
+    svg.setAttribute('class', 'tree-svg fade-in');
+ 
+    document.getElementById('bstStat').textContent = 'height ' + bstHeight(bstRoot) + ' · ' + bstCount(bstRoot) + ' nodes';
+  }
+ 
+  function line(x1,y1,x2,y2){
+    var l = document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',x1); l.setAttribute('y1',y1);
+    l.setAttribute('x2',x2); l.setAttribute('y2',y2);
+    l.setAttribute('class','edge');
+    return l;
+  }
+ 
+  // ===================== B-TREE =====================
+  var btRoot = { keys: [], leaf: true, children: [] };
+  var splitHappened = false;
+ 
+  function btSplitChild(parent, i){
+    var child = parent.children[i];
+    var mid = Math.floor(MAX_KEYS / 2);
+    var medianKey = child.keys[mid];
+    var rightKeys = child.keys.slice(mid+1);
+    var leftKeys = child.keys.slice(0, mid);
+    var rightChild = {
+      keys: rightKeys,
+      leaf: child.leaf,
+      children: child.leaf ? [] : child.children.slice(mid+1)
+    };
+    child.keys = leftKeys;
+    if(!child.leaf) child.children = child.children.slice(0, mid+1);
+    parent.keys.splice(i, 0, medianKey);
+    parent.children.splice(i+1, 0, rightChild);
+    splitHappened = true;
+  }
+ 
+  function btInsertNonFull(node, val){
+    if(node.leaf){
+      var i = 0;
+      while(i < node.keys.length && val > node.keys[i]) i++;
+      node.keys.splice(i, 0, val);
+    } else {
+      var j = node.keys.length - 1;
+      while(j >= 0 && val < node.keys[j]) j--;
+      j++;
+      if(node.children[j].keys.length === MAX_KEYS){
+        btSplitChild(node, j);
+        if(val > node.keys[j]) j++;
+      }
+      btInsertNonFull(node.children[j], val);
+    }
+  }
+ 
+  function btInsert(val){
+    splitHappened = false;
+    if(btRoot.keys.length === MAX_KEYS){
+      var newRoot = { keys: [], leaf: false, children: [btRoot] };
+      btSplitChild(newRoot, 0);
+      btRoot = newRoot;
+    }
+    btInsertNonFull(btRoot, val);
+    return splitHappened;
+  }
+ 
+  function btHeight(node){
+    if(node.leaf) return 1;
+    return 1 + btHeight(node.children[0]);
+  }
+  function btCount(node){
+    var c = 1;
+    if(!node.leaf) node.children.forEach(function(ch){ c += btCount(ch); });
+    return c;
+  }
+ 
+  function slotWidth(node){ return Math.max(58, node.keys.length * 30 + 26); }
+ 
+  function layoutBTree(node, depth, ctx){
+    node.y = depth * 100 + 30;
+    if(node.leaf){
+      node.x = ctx.next + slotWidth(node)/2;
+      ctx.next += slotWidth(node) + 18;
+    } else {
+      node.children.forEach(function(ch){ layoutBTree(ch, depth+1, ctx); });
+      var first = node.children[0], last = node.children[node.children.length-1];
+      node.x = (first.x + last.x) / 2;
+    }
+  }
+ 
+  function renderBTree(highlightVal){
+    var svg = document.getElementById('btSvg');
+    svg.innerHTML = '';
+    var ctx = { next: 20 };
+    layoutBTree(btRoot, 0, ctx);
+    var width = Math.max(560, ctx.next + 40);
+    svg.setAttribute('viewBox', '0 0 ' + width + ' 340');
+ 
+    var edgesG = document.createElementNS('http://www.w3.org/2000/svg','g');
+    var nodesG = document.createElementNS('http://www.w3.org/2000/svg','g');
+ 
+    function walk(node){
+      if(!node.leaf){
+        node.children.forEach(function(ch){
+          edgesG.appendChild(line(node.x, node.y+14, ch.x, ch.y-14));
+          walk(ch);
+        });
+      }
+      var w = slotWidth(node);
+      var h = 30;
+      var hasHi = node.keys.indexOf(highlightVal) !== -1;
+      var g = document.createElementNS('http://www.w3.org/2000/svg','g');
+      g.setAttribute('class', 'bt-node' + (hasHi ? ' flash' : ''));
+      g.setAttribute('transform', 'translate(' + (node.x - w/2) + ',' + (node.y - h/2) + ')');
+      var r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      r.setAttribute('width', w); r.setAttribute('height', h); r.setAttribute('rx', 3);
+      g.appendChild(r);
+      node.keys.forEach(function(k, idx){
+        var t = document.createElementNS('http://www.w3.org/2000/svg','text');
+        t.setAttribute('x', (w / node.keys.length) * (idx + 0.5));
+        t.setAttribute('y', h/2 + 4);
+        t.textContent = k;
+        g.appendChild(t);
+        if(idx > 0){
+          var sep = document.createElementNS('http://www.w3.org/2000/svg','line');
+          sep.setAttribute('x1', (w/node.keys.length)*idx); sep.setAttribute('y1', 3);
+          sep.setAttribute('x2', (w/node.keys.length)*idx); sep.setAttribute('y2', h-3);
+          sep.setAttribute('class','keysep');
+          g.appendChild(sep);
+        }
+      });
+      nodesG.appendChild(g);
+    }
+    walk(btRoot);
+    svg.appendChild(edgesG);
+    svg.appendChild(nodesG);
+    svg.setAttribute('class', 'tree-svg fade-in');
+ 
+    document.getElementById('btStat').textContent = 'height ' + btHeight(btRoot) + ' · ' + btCount(btRoot) + ' nodes';
+  }
+ 
+  // ===================== driver =====================
+  var stepIdx = 0;
+  var seqTrack = document.getElementById('seqTrack');
+  var status = document.getElementById('status');
+  var btnNext = document.getElementById('btnNext');
+  var btnPlay = document.getElementById('btnPlay');
+  var btnReset = document.getElementById('btnReset');
+ 
+  function drawSeqTrack(){
+    seqTrack.innerHTML = '';
+    SEQUENCE.forEach(function(v, i){
+      var s = document.createElement('span');
+      s.className = 'num' + (i < stepIdx ? ' done' : (i === stepIdx ? ' next' : ''));
+      s.textContent = v;
+      seqTrack.appendChild(s);
+    });
+  }
+ 
+  function step(){
+    if(stepIdx >= SEQUENCE.length) return false;
+    var val = SEQUENCE[stepIdx];
+    bstRoot = bstInsert(bstRoot, val);
+    var split = btInsert(val);
+    renderBST(val);
+    renderBTree(val);
+    stepIdx++;
+    drawSeqTrack();
+    status.innerHTML = 'Inserted <b>' + val + '</b>. BST height ' + bstHeight(bstRoot) + ', B-tree height ' + btHeight(btRoot) + '.' + (split ? ' A B-tree node just overflowed and split, pushing a key up.' : '');
+    if(stepIdx >= SEQUENCE.length){
+      btnNext.disabled = true;
+      btnPlay.disabled = true;
+      status.innerHTML += ' Sequence complete — compare the two heights above.';
+    }
+    return true;
+  }
+ 
+  function reset(){
+    bstRoot = null;
+    btRoot = { keys: [], leaf: true, children: [] };
+    stepIdx = 0;
+    renderBST(null);
+    renderBTree(null);
+    drawSeqTrack();
+    status.textContent = 'Ready. Click Insert next to begin, or Play all to watch the whole sequence.';
+    btnNext.disabled = false;
+    btnPlay.disabled = false;
+  }
+ 
+  btnNext.addEventListener('click', step);
+  btnReset.addEventListener('click', reset);
+  btnPlay.addEventListener('click', function(){
+    btnNext.disabled = true;
+    btnPlay.disabled = true;
+    var iv = setInterval(function(){
+      var more = step();
+      if(!more){ clearInterval(iv); }
+    }, 950);
+  });
+ 
+  reset();
+})();
+</script>
+</body>
+</html>
+ 

@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Index Drawer — MongoDB Indexing, in depth</title>
+<style>
+ 
+  @import url('https://fonts.googleapis.com/css2?family=Bitter:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+ 
+  :root{
+    --wood-dark:   #2b2119;
+    --wood-mid:    #3a2c20;
+    --wood-rail:   #4a382a;
+    --card:        #f6f0e2;
+    --card-hi:     #fbf7ec;
+    --ink:         #241f19;
+    --ink-soft:    #574c3f;
+    --brass:       #b08d57;
+    --brass-hi:    #d4b06f;
+    --teal:        #3c6e64;
+    --teal-deep:   #2a4f48;
+    --stamp:       #a23b2e;
+    --rule:        #d9cdad;
+    --shadow:      rgba(20,14,6,0.35);
+  }
+ 
+  *{ box-sizing:border-box; }
+ 
+  html{ scroll-behavior:smooth; }
+ 
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at top left, rgba(255,255,255,0.03), transparent 60%),
+      repeating-linear-gradient(90deg, var(--wood-dark) 0 2px, var(--wood-mid) 2px 90px);
+    color:var(--ink);
+    font-family:'Source Serif 4', Georgia, serif;
+    line-height:1.65;
+  }
+ 
+  h1,h2,h3,.label{ font-family:'Bitter', Georgia, serif; }
+  code, .mono, .tag, .pill, nav a small{ font-family:'JetBrains Mono', monospace; }
+ 
+  a{ color:inherit; }
+ 
+  /* ---------- layout shell ---------- */
+  .shell{
+    display:grid;
+    grid-template-columns: 250px minmax(0,760px);
+    justify-content:center;
+    gap:40px;
+    max-width:1180px;
+    margin:0 auto;
+    padding:48px 24px 120px;
+  }
+ 
+  /* ---------- sidebar : the drawer rail ---------- */
+  .rail{
+    position:sticky;
+    top:28px;
+    align-self:start;
+    background:linear-gradient(180deg, var(--wood-rail), var(--wood-mid));
+    border:1px solid rgba(0,0,0,0.4);
+    border-radius:4px;
+    padding:22px 18px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 12px 30px var(--shadow);
+  }
+  .rail .drawer-label{
+    color:var(--brass-hi);
+    font-size:11px;
+    letter-spacing:0.02em;
+    margin:0 0 4px;
+  }
+  .rail .drawer-title{
+    color:var(--card-hi);
+    font-size:19px;
+    margin:0 0 18px;
+    font-weight:700;
+  }
+  .rail nav{ display:flex; flex-direction:column; gap:2px; }
+  .rail nav a{
+    text-decoration:none;
+    color:#cdbfa4;
+    font-size:14.5px;
+    padding:7px 9px;
+    border-radius:3px;
+    border-left:2px solid transparent;
+    transition:background .15s ease, border-color .15s ease, color .15s ease;
+  }
+  .rail nav a:hover{ background:rgba(255,255,255,0.04); color:var(--card-hi); }
+  .rail nav a.active{
+    background:rgba(212,176,111,0.12);
+    border-left-color:var(--brass-hi);
+    color:var(--brass-hi);
+  }
+  .rail nav a small{ display:block; color:#8a7a63; font-size:10.5px; margin-top:1px; }
+ 
+  /* ---------- main column ---------- */
+  main{ min-width:0; }
+ 
+  .hero{
+    background:var(--card-hi);
+    border-radius:3px;
+    padding:46px 44px 38px;
+    box-shadow:0 18px 40px var(--shadow), 0 1px 0 rgba(255,255,255,0.5) inset;
+    position:relative;
+    overflow:hidden;
+    margin-bottom:30px;
+  }
+  .hero::before{
+    content:"";
+    position:absolute; left:0; top:38px;
+    width:100%; height:1px;
+    background:var(--rule);
+  }
+  .hero .tag{
+    display:inline-block;
+    font-size:11px;
+    color:var(--stamp);
+    border:1px solid var(--stamp);
+    border-radius:2px;
+    padding:3px 8px;
+    transform:rotate(-2deg);
+    margin-bottom:22px;
+  }
+  .hero h1{
+    font-size:40px;
+    line-height:1.12;
+    margin:0 0 16px;
+    color:var(--ink);
+    max-width:14ch;
+  }
+  .hero p.lede{
+    font-size:18px;
+    color:var(--ink-soft);
+    max-width:56ch;
+    margin:0;
+  }
+ 
+  /* ---------- section "cards" ---------- */
+  section.card{
+    background:var(--card);
+    border-radius:3px;
+    padding:38px 44px;
+    margin-bottom:26px;
+    box-shadow:0 10px 26px var(--shadow), 0 1px 0 rgba(255,255,255,0.4) inset;
+    scroll-margin-top:24px;
+  }
+  section.card > .label{
+    font-size:11px;
+    color:var(--teal-deep);
+    margin:0 0 8px;
+  }
+  section.card h2{
+    font-size:26px;
+    margin:0 0 18px;
+    color:var(--ink);
+    border-bottom:1px solid var(--rule);
+    padding-bottom:14px;
+  }
+  section.card h3{
+    font-size:17px;
+    color:var(--ink);
+    margin:26px 0 8px;
+  }
+  section.card p{ color:var(--ink); max-width:70ch; }
+  section.card p.muted{ color:var(--ink-soft); font-size:15px; }
+ 
+  /* ---------- pills / catalog tabs for index types ---------- */
+  .tabs{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin:6px 0 22px;
+  }
+  .pill{
+    font-size:12px;
+    background:var(--card-hi);
+    border:1px solid var(--rule);
+    color:var(--ink-soft);
+    padding:6px 11px;
+    border-radius:2px;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .pill:hover{ border-color:var(--teal); color:var(--teal-deep); }
+  .pill.active{
+    background:var(--teal);
+    border-color:var(--teal);
+    color:var(--card-hi);
+  }
+ 
+  .type-panel{ display:none; }
+  .type-panel.active{ display:block; animation:reveal .35s ease; }
+  @keyframes reveal{ from{ opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+ 
+  .type-panel h3{ margin-top:0; }
+  .type-panel .ex{ margin-top:10px; }
+ 
+  /* ---------- code blocks ---------- */
+  pre{
+    background:var(--ink);
+    color:#e9e0cb;
+    padding:16px 18px;
+    border-radius:3px;
+    overflow-x:auto;
+    font-size:13px;
+    line-height:1.6;
+    margin:12px 0;
+    border-left:3px solid var(--brass);
+  }
+  pre .c1{ color:#8fae9d; }     /* comments */
+  pre .kw{ color:#e0b96f; }     /* keywords */
+  pre .str{ color:#c9a6ff; }    /* strings */
+  code.inline{
+    background:rgba(60,110,100,0.12);
+    color:var(--teal-deep);
+    padding:1px 5px;
+    border-radius:2px;
+    font-size:0.87em;
+  }
+ 
+  /* ---------- b-tree diagram ---------- */
+  .btree-wrap{
+    background:var(--card-hi);
+    border:1px solid var(--rule);
+    border-radius:4px;
+    padding:20px;
+    margin:18px 0 8px;
+  }
+  .btree-wrap svg{ display:block; width:100%; height:auto; }
+  .btree-controls{
+    display:flex; align-items:center; gap:12px; margin-top:12px;
+  }
+  .btree-btn{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    background:var(--teal);
+    color:var(--card-hi);
+    border:none;
+    padding:8px 14px;
+    border-radius:3px;
+    cursor:pointer;
+  }
+  .btree-btn:hover{ background:var(--teal-deep); }
+  .btree-status{ font-size:12.5px; color:var(--ink-soft); font-family:'JetBrains Mono', monospace; }
+  .node{ transition: fill .3s ease, stroke .3s ease; }
+  .node.visited{ fill:var(--brass-hi); stroke:var(--stamp); }
+  .node.hit{ fill:var(--teal); stroke:var(--teal-deep); }
+  .edge{ transition: stroke .3s ease, stroke-width .3s ease; }
+  .edge.walked{ stroke:var(--stamp); stroke-width:2.5; }
+ 
+  /* ---------- table ---------- */
+  table{ width:100%; border-collapse:collapse; margin:14px 0; font-size:14px; }
+  th,td{ text-align:left; padding:9px 10px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  th{ color:var(--teal-deep); font-family:'JetBrains Mono', monospace; font-size:11.5px; font-weight:600; }
+  td code.inline{ white-space:nowrap; }
+ 
+  /* ---------- edge case list ---------- */
+  .case{
+    display:flex;
+    gap:14px;
+    padding:16px 0;
+    border-bottom:1px solid var(--rule);
+  }
+  .case:last-child{ border-bottom:none; }
+  .case .n{
+    font-family:'JetBrains Mono', monospace;
+    color:var(--stamp);
+    font-size:13px;
+    padding-top:2px;
+    min-width:26px;
+  }
+  .case .body h3{ margin:0 0 6px; font-size:15.5px; }
+  .case .body p{ margin:0; font-size:14.5px; }
+ 
+  /* ---------- callouts ---------- */
+  .callout{
+    border-left:3px solid var(--teal);
+    background:rgba(60,110,100,0.08);
+    padding:12px 16px;
+    margin:16px 0;
+    font-size:14.5px;
+    border-radius:0 3px 3px 0;
+  }
+  .callout.warn{ border-left-color:var(--stamp); background:rgba(162,59,46,0.07); }
+  .callout b{ color:var(--ink); }
+ 
+  footer{
+    text-align:center;
+    color:#8a7a63;
+    font-size:12.5px;
+    margin-top:30px;
+    font-family:'JetBrains Mono', monospace;
+  }
+ 
+  @media (max-width: 880px){
+    .shell{ grid-template-columns:1fr; padding:24px 16px 80px; }
+    .rail{ position:static; }
+    .hero{ padding:32px 26px; }
+    .hero h1{ font-size:30px; }
+    section.card{ padding:28px 24px; }
+  }
+ 
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    .type-panel.active{ animation:none; }
+    .node, .edge{ transition:none; }
+  }
+</style>
+</head>
+<body>
+ 
+<div class="shell">
+ 
+  <aside class="rail">
+    <p class="drawer-label">DRAWER 14 — M</p>
+    <p class="drawer-title">MongoDB Indexing</p>
+    <nav id="railnav">
+      <a href="#what" class="active">What an index is<small>the shortcut, not the data</small></a>
+      <a href="#internals">Under the hood<small>B-trees &amp; WiredTiger</small></a>
+      <a href="#types">Types of indexes<small>single, compound, text…</small></a>
+      <a href="#methods">Methods<small>create, list, drop, hide</small></a>
+      <a href="#planner">The query planner<small>how Mongo picks one</small></a>
+      <a href="#cases">Edge cases<small>where it bites you</small></a>
+    </nav>
+  </aside>
+ 
+  <main>
+ 
+    <div class="hero">
+      <span class="tag">field notes — reference card</span>
+      <h1>Every index is a bet about which questions you'll ask twice.</h1>
+      <p class="lede">A working reference on how MongoDB indexes are structured, built, chosen, and misused — from the B-tree underneath to the query planner deciding whether to trust it.</p>
+    </div>
+ 
+    <section class="card" id="what">
+      <p class="label">01 — FIRST PRINCIPLES</p>
+      <h2>What an index actually is</h2>
+      <p>A MongoDB index is not a copy of your data. It's a small, ordered lookup structure that stores just the value of one or more fields, plus a pointer back to the full document on disk. Ask for <code class="inline">{ email: "a@x.com" }</code> without an index, and Mongo walks every document in the collection — a <strong>COLLSCAN</strong> — checking each one in turn. With an index on <code class="inline">email</code>, it instead walks a sorted structure straight to the match and follows the pointer.</p>
+      <p class="muted">Think of the collection as an unsorted stack of index cards in a drawer, and the index as a second, sorted stack that only holds the one detail you search by — plus a note saying "see card #4,381." You still have one drawer of real cards. The index is the shortcut into it, and it costs a second stack to maintain.</p>
+      <div class="callout">
+        <b>The trade you're always making:</b> indexes speed up reads and cost writes. Every insert, update, or delete has to update the real document <em>and</em> every index that field touches. An unused index is pure cost — no benefit, ongoing tax on every write.
+      </div>
+    </section>
+ 
+    <section class="card" id="internals">
+      <p class="label">02 — INTERNALS</p>
+      <h2>Under the hood: B-trees and WiredTiger</h2>
+      <p>MongoDB's default storage engine, <strong>WiredTiger</strong>, stores both collections and indexes as <strong>B-trees</strong> — specifically B+ trees, where every value lives in a leaf node and internal nodes exist purely to route a search downward. Each internal node holds a handful of sorted keys and pointers to child nodes covering the ranges between them.</p>
+      <p>A lookup starts at the root, compares your search value against the keys in that node, and follows the one pointer whose range contains it — repeating one level down until it reaches a leaf. That leaf holds the indexed value and a <strong>record id</strong>, which the engine uses to fetch the actual document from the collection's own B-tree.</p>
+ 
+      <h3>Walk a lookup yourself</h3>
+      <p class="muted">This is a small B-tree on an <code class="inline">age</code> field. Click through a lookup for <code class="inline">age = 41</code> and watch which nodes the engine actually has to touch.</p>
+ 
+      <div class="btree-wrap">
+        <svg viewBox="0 0 680 260" id="btreeSvg">
+          <!-- edges -->
+          <line class="edge" id="e-r-l" x1="340" y1="48" x2="180" y2="118" stroke="#c9bd9e" stroke-width="1.5"/>
+          <line class="edge" id="e-r-r" x1="340" y1="48" x2="500" y2="118" stroke="#c9bd9e" stroke-width="1.5"/>
+          <line class="edge" id="e-l-ll" x1="180" y1="140" x2="90" y2="200" stroke="#c9bd9e" stroke-width="1.5"/>
+          <line class="edge" id="e-l-lr" x1="180" y1="140" x2="260" y2="200" stroke="#c9bd9e" stroke-width="1.5"/>
+          <line class="edge" id="e-r-rl" x1="500" y1="140" x2="420" y2="200" stroke="#c9bd9e" stroke-width="1.5"/>
+          <line class="edge" id="e-r-rr" x1="500" y1="140" x2="590" y2="200" stroke="#c9bd9e" stroke-width="1.5"/>
+ 
+          <!-- root -->
+          <g id="n-root">
+            <rect class="node" x="300" y="26" width="80" height="26" rx="3" fill="#fbf7ec" stroke="#b08d57" stroke-width="1.5"/>
+            <text x="340" y="43" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#241f19">30 | 50</text>
+          </g>
+ 
+          <!-- level 2 -->
+          <g id="n-l">
+            <rect class="node" x="140" y="118" width="80" height="26" rx="3" fill="#fbf7ec" stroke="#b08d57" stroke-width="1.5"/>
+            <text x="180" y="135" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#241f19">18 | 24</text>
+          </g>
+          <g id="n-r">
+            <rect class="node" x="460" y="118" width="80" height="26" rx="3" fill="#fbf7ec" stroke="#b08d57" stroke-width="1.5"/>
+            <text x="500" y="135" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#241f19">38 | 44</text>
+          </g>
+ 
+          <!-- leaves -->
+          <g id="n-ll">
+            <rect class="node" x="52" y="200" width="76" height="26" rx="3" fill="#f6f0e2" stroke="#d9cdad" stroke-width="1.5"/>
+            <text x="90" y="217" text-anchor="middle" font-family="JetBrains Mono" font-size="11.5" fill="#574c3f">12, 18, 21</text>
+          </g>
+          <g id="n-lr">
+            <rect class="node" x="222" y="200" width="76" height="26" rx="3" fill="#f6f0e2" stroke="#d9cdad" stroke-width="1.5"/>
+            <text x="260" y="217" text-anchor="middle" font-family="JetBrains Mono" font-size="11.5" fill="#574c3f">24, 27, 29</text>
+          </g>
+          <g id="n-rl">
+            <rect class="node" x="382" y="200" width="76" height="26" rx="3" fill="#f6f0e2" stroke="#d9cdad" stroke-width="1.5"/>
+            <text x="420" y="217" text-anchor="middle" font-family="JetBrains Mono" font-size="11.5" fill="#574c3f">38, 41, 43</text>
+          </g>
+          <g id="n-rr">
+            <rect class="node" x="552" y="200" width="76" height="26" rx="3" fill="#f6f0e2" stroke="#d9cdad" stroke-width="1.5"/>
+            <text x="590" y="217" text-anchor="middle" font-family="JetBrains Mono" font-size="11.5" fill="#574c3f">44, 50, 61</text>
+          </g>
+        </svg>
+        <div class="btree-controls">
+          <button class="btree-btn" id="btreeStep">Step through lookup for age = 41 →</button>
+          <span class="btree-status" id="btreeStatus">3 comparisons to go. 0 nodes visited yet.</span>
+        </div>
+      </div>
+ 
+      <h3>Why this matters in practice</h3>
+      <p>A B-tree keeps lookups fast — <code class="inline">O(log n)</code> — because tree depth grows very slowly as data grows; a collection with a billion documents might still only need 3–4 levels. It's also why WiredTiger wants indexes resident in RAM: every level down is, worst case, a disk page fault. An index bigger than your working set forces the engine to page from disk on every lookup, which erases most of the benefit.</p>
+      <p>Document data itself is stored the same way, keyed by an internal <strong>record id</strong> (in modern WiredTiger, roughly the <code class="inline">_id</code>). So an index lookup is really two B-tree walks: one through the index to find the record id, one through the collection to fetch the document — unless the index alone contains every field the query needs, which brings us to <em>covered queries</em> below.</p>
+    </section>
+ 
+    <section class="card" id="types">
+      <p class="label">03 — CATALOG</p>
+      <h2>Types of indexes</h2>
+      <p class="muted">Click a tab to open that card.</p>
+      <div class="tabs" id="typeTabs">
+        <button class="pill active" data-t="single">Single field</button>
+        <button class="pill" data-t="compound">Compound</button>
+        <button class="pill" data-t="multikey">Multikey</button>
+        <button class="pill" data-t="text">Text</button>
+        <button class="pill" data-t="hashed">Hashed</button>
+        <button class="pill" data-t="geo">Geospatial</button>
+        <button class="pill" data-t="wildcard">Wildcard</button>
+        <button class="pill" data-t="ttl">TTL</button>
+        <button class="pill" data-t="unique">Unique</button>
+        <button class="pill" data-t="partial">Partial / sparse</button>
+      </div>
+ 
+      <div class="type-panel active" data-p="single">
+        <h3>Single field</h3>
+        <p>One field, one direction. The default and the workhorse — covers equality and range queries and sorts on that field.</p>
+        <div class="ex"><pre>db.users.createIndex({ email: <span class="kw">1</span> })</pre></div>
+      </div>
+ 
+      <div class="type-panel" data-p="compound">
+        <h3>Compound</h3>
+        <p>Multiple fields in one index, order matters. Follows the <strong>prefix rule</strong>: a compound index on <code class="inline">{a, b, c}</code> can serve queries on <code class="inline">a</code>, <code class="inline">a+b</code>, or <code class="inline">a+b+c</code> — but not <code class="inline">b</code> alone.</p>
+        <div class="ex"><pre>db.users.createIndex({ city: <span class="kw">1</span>, age: <span class="kw">-1</span> })</pre></div>
+      </div>
+ 
+      <div class="type-panel" data-p="multikey">
+        <h3>Multikey</h3>
+        <p>Automatically created when you index a field that holds an array — MongoDB adds one index entry per array element. A document with a 500-item array contributes 500 entries, so array fields can bloat an index fast.</p>
+        <div class="ex"><pre>db.posts.createIndex({ tags: <span class="kw">1</span> }) <span class="c1">// tags: ["a","b","c"]</span></pre></div>
+      </div>
+ 
+      <div class="type-panel" data-p="text">
+        <h3>Text</h3>
+        <p>Tokenizes string content for keyword search with stemming and stopword removal. A collection may have only <strong>one</strong> text index, though it can span several fields.</p>
+        <div class="ex"><pre>db.articles.createIndex({ title: <span class="str">"text"</span>, body: <span class="str">"text"</span> })</pre></div>
+      </div>
+ 
+      <div class="type-panel" data-p="hashed">
+        <h3>Hashed</h3>
+        <p>Stores the hash of a field's value instead of the value itself. Distributes writes evenly, which is why it's the standard choice for a <strong>shard key</strong> — but hashes can't serve range queries, only equality.</p>
+        <div class="ex"><pre>db.events.createIndex({ userId: <span class="str">"hashed"</span> })</pre></div>
+      </div>
+ 
+      <div class="type-panel" data-p="geo">
+        <h3>Geospatial</h3>
+        <p><code class="inline">2dsphere</code> indexes GeoJSON data on a sphere (real-world coordinates); the older <code class="inline">2d</code> is for flat planar coordinates. Powers <code class="inline">$near</code>, <code class="inline">$geoWithin</code>, and similar queries.</p>
+        <div class="ex"><pre>db.places.createIndex({ location: <span class="str">"2dsphere"</span> })</pre></div>
+      </div>
+ 
+      <div class="type-panel" data-p="wildcard">
+        <h3>Wildcard</h3>
+        <p>Indexes every field (or every field under a path) without naming them up front — useful for unpredictable, user-defined document shapes. Costs more to maintain than a targeted index and shouldn't replace one for known hot fields.</p>
+        <div class="ex"><pre>db.logs.createIndex({ <span class="str">"metadata.$**"</span>: <span class="kw">1</span> })</pre></div>
+      </div>
+ 
+      <div class="type-panel" data-p="ttl">
+        <h3>TTL (time to live)</h3>
+        <p>A single-field index on a date value that makes MongoDB automatically delete documents once they age past a threshold. A background job sweeps expired documents roughly once a minute — not instantly.</p>
+        <div class="ex"><pre>db.sessions.createIndex(
+  { createdAt: <span class="kw">1</span> },
+  { expireAfterSeconds: <span class="kw">3600</span> }
+)</pre></div>
+      </div>
+ 
+      <div class="type-panel" data-p="unique">
+        <h3>Unique</h3>
+        <p>Rejects a write that would duplicate an existing indexed value. Applies per shard key range in a sharded collection, and treats a <em>missing</em> field the same as <code class="inline">null</code> — so more than one document without the field will collide.</p>
+        <div class="ex"><pre>db.users.createIndex({ email: <span class="kw">1</span> }, { unique: <span class="kw">true</span> })</pre></div>
+      </div>
+ 
+      <div class="type-panel" data-p="partial">
+        <h3>Partial / sparse</h3>
+        <p><strong>Sparse</strong> skips documents missing the field entirely. <strong>Partial</strong> is the more flexible modern version — index only documents matching an arbitrary filter, which also fixes the unique-plus-missing-field collision above.</p>
+        <div class="ex"><pre>db.users.createIndex(
+  { email: <span class="kw">1</span> },
+  { unique: <span class="kw">true</span>, partialFilterExpression: { email: { $exists: <span class="kw">true</span> } } }
+)</pre></div>
+      </div>
+    </section>
+ 
+    <section class="card" id="methods">
+      <p class="label">04 — OPERATIONS</p>
+      <h2>Methods you'll actually use</h2>
+      <table>
+        <tr><th>Method</th><th>Does</th></tr>
+        <tr><td><code class="inline">createIndex(keys, opts)</code></td><td>Builds an index. Runs as an online, non-blocking build by default in modern MongoDB.</td></tr>
+        <tr><td><code class="inline">createIndexes([...])</code></td><td>Builds several indexes in one call.</td></tr>
+        <tr><td><code class="inline">getIndexes()</code></td><td>Lists every index on a collection, including the default <code class="inline">_id_</code> index every collection gets for free.</td></tr>
+        <tr><td><code class="inline">dropIndex(name)</code></td><td>Removes one index by name.</td></tr>
+        <tr><td><code class="inline">hideIndex(name)</code></td><td>Keeps an index maintained but invisible to the planner — a safe way to test "what if this index didn't exist" before dropping it for real.</td></tr>
+        <tr><td><code class="inline">.explain("executionStats")</code></td><td>Shows whether a query actually used an index (<code class="inline">IXSCAN</code>) or scanned the collection (<code class="inline">COLLSCAN</code>), and how many documents it examined versus returned.</td></tr>
+      </table>
+      <h3>In Mongoose</h3>
+      <pre>userSchema.index({ city: <span class="kw">1</span>, age: <span class="kw">-1</span> });
+<span class="c1">// built in the background when the model connects</span>
+<span class="kw">await</span> User.collection.getIndexes();</pre>
+    </section>
+ 
+    <section class="card" id="planner">
+      <p class="label">05 — DECISION MAKING</p>
+      <h2>How the query planner picks an index</h2>
+      <p>When a query can be served by more than one index, MongoDB doesn't guess — it runs a short competition. Each candidate index gets a limited trial execution against the real query, and whichever finishes fastest (in examined-documents terms) wins. That plan is then cached, so repeated identical queries skip the trial and go straight to the winner, until the collection's indexes or data shape change enough to invalidate the cache.</p>
+      <h3>Covered queries</h3>
+      <p>If every field a query needs to <em>filter, sort, and return</em> is present in the index itself, MongoDB never has to open the underlying document at all — the index is the answer. This is a <strong>covered query</strong>, and it's the fastest shape a read can take. Adding an unindexed field to the projection breaks the cover immediately.</p>
+      <h3>Index intersection</h3>
+      <p>MongoDB can, in some cases, combine two single-field indexes to answer one query instead of using neither — but a purpose-built compound index for a common query shape is almost always faster and more predictable than relying on intersection.</p>
+      <div class="callout">
+        <b>Rule of thumb:</b> don't guess. Run <code class="inline">.explain("executionStats")</code> and check <code class="inline">totalDocsExamined</code> against <code class="inline">nReturned</code>. If they're far apart, the index isn't narrowing the search the way you think it is.
+      </div>
+    </section>
+ 
+    <section class="card" id="cases">
+      <p class="label">06 — WHERE IT BITES</p>
+      <h2>Edge cases worth remembering</h2>
+ 
+      <div class="case">
+        <div class="n">01</div>
+        <div class="body"><h3>Every index taxes every write</h3><p>Ten indexes on a collection means one insert triggers eleven structural updates. Index only what you filter, sort, or join on regularly.</p></div>
+      </div>
+      <div class="case">
+        <div class="n">02</div>
+        <div class="body"><h3>The prefix rule is strict</h3><p>A compound index on <code class="inline">{city, age}</code> serves <code class="inline">city</code> and <code class="inline">city+age</code> queries — not an <code class="inline">age</code>-only query. Field order is a design decision, not a formality.</p></div>
+      </div>
+      <div class="case">
+        <div class="n">03</div>
+        <div class="body"><h3>Sort direction has to line up</h3><p>An index built <code class="inline">{city: 1, age: -1}</code> may not serve a sort requesting the opposite direction on the second field efficiently.</p></div>
+      </div>
+      <div class="case">
+        <div class="n">04</div>
+        <div class="body"><h3>Unanchored regex and $ne can't use a sorted range</h3><p><code class="inline">/^Rah/</code> can use an index as a prefix scan; <code class="inline">/ahul/</code> and <code class="inline">$ne</code>/<code class="inline">$nin</code> generally can't, since "everything except X" isn't a contiguous range in a sorted tree.</p></div>
+      </div>
+      <div class="case">
+        <div class="n">05</div>
+        <div class="body"><h3>Unique indexes treat "missing" as a value</h3><p>Two documents both lacking an <code class="inline">email</code> field collide on a unique index, because MongoDB indexes the missing field as <code class="inline">null</code> for both. Fix with a partial filter expression.</p></div>
+      </div>
+      <div class="case">
+        <div class="n">06</div>
+        <div class="body"><h3>Indexes bigger than RAM get slower, not faster</h3><p>WiredTiger wants the working set of indexes in memory. Once an index outgrows available RAM, lookups start paging from disk and the benefit erodes.</p></div>
+      </div>
+      <div class="case">
+        <div class="n">07</div>
+        <div class="body"><h3>Only one text index per collection</h3><p>You can't have separate text indexes on <code class="inline">title</code> and <code class="inline">body</code> — they have to be declared together in a single text index.</p></div>
+      </div>
+      <div class="case">
+        <div class="n">08</div>
+        <div class="body"><h3>Case sensitivity is the default</h3><p>"Rahul" and "rahul" are different index entries unless a <code class="inline">collation</code> is attached to the index to normalize case and accents.</p></div>
+      </div>
+      <div class="case">
+        <div class="n">09</div>
+        <div class="body"><h3>Array fields multiply entries</h3><p>A multikey index adds one entry per array element, per document. A handful of documents with large arrays can bloat an index disproportionately to the collection size.</p></div>
+      </div>
+      <div class="case">
+        <div class="n">10</div>
+        <div class="body"><h3>$or often can't share one index scan</h3><p>MongoDB may run a separate index scan per branch of an <code class="inline">$or</code> and merge the results, which is usually less efficient than a single compound index serving an equivalent <code class="inline">$and</code>.</p></div>
+      </div>
+      <div class="case">
+        <div class="n">11</div>
+        <div class="body"><h3>Low-cardinality fields barely help</h3><p>Indexing a field with only a few distinct values (like a boolean or a two-value status) narrows very little. Indexes pay off most on high-cardinality fields like email or a unique id.</p></div>
+      </div>
+      <div class="case">
+        <div class="n">12</div>
+        <div class="body"><h3>A build on a large existing collection isn't free</h3><p>Building an index on millions of existing documents takes real time and I/O, even as an online build. Plan index creation for low-traffic windows on large production collections.</p></div>
+      </div>
+    </section>
+ 
+    <footer>index card catalog · reshuffled 2026 · pull the next drawer when you're ready</footer>
+ 
+  </main>
+</div>
+ 
+<script>
+(function(){
+  // ---- sidebar active-link tracking ----
+  var links = Array.prototype.slice.call(document.querySelectorAll('#railnav a'));
+  var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+ 
+  function onScroll(){
+    var pos = window.scrollY + 120;
+    var current = sections[0];
+    for (var i = 0; i < sections.length; i++){
+      if (sections[i] && sections[i].offsetTop <= pos) current = sections[i];
+    }
+    links.forEach(function(a){
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+ 
+  // ---- index-type tabs ----
+  var tabs = document.querySelectorAll('#typeTabs .pill');
+  var panels = document.querySelectorAll('.type-panel');
+  tabs.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      tabs.forEach(function(b){ b.classList.remove('active'); });
+      panels.forEach(function(p){ p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.querySelector('.type-panel[data-p="' + btn.dataset.t + '"]').classList.add('active');
+    });
+  });
+ 
+  // ---- B-tree lookup walkthrough ----
+  // path for age = 41: root -> right (30|50, 41 between 30-50) -> n-r left child (38|44, 41 between 38-44) -> n-rl leaf (38,41,43) HIT
+  var steps = [
+    { nodes: ['n-root'], edges: [], msg: 'Compare 41 to root keys (30, 50). 41 is between them — go right.' },
+    { nodes: ['n-r'], edges: ['e-r-r'], msg: 'At node (38, 44). 41 is between them — go left child of this node.' },
+    { nodes: ['n-rl'], edges: ['e-r-rl'], msg: 'Reached leaf (38, 41, 43) — found 41. 3 nodes touched total.' }
+  ];
+  var stepIdx = 0;
+  var btn = document.getElementById('btreeStep');
+  var status = document.getElementById('btreeStatus');
+ 
+  function resetTree(){
+    document.querySelectorAll('.node').forEach(function(n){ n.classList.remove('visited','hit'); });
+    document.querySelectorAll('.edge').forEach(function(e){ e.classList.remove('walked'); });
+  }
+ 
+  btn.addEventListener('click', function(){
+    if (stepIdx >= steps.length){
+      stepIdx = 0;
+      resetTree();
+      status.textContent = '3 comparisons to go. 0 nodes visited yet.';
+      btn.textContent = 'Step through lookup for age = 41 →';
+      return;
+    }
+    var s = steps[stepIdx];
+    s.nodes.forEach(function(id){
+      var el = document.getElementById(id).querySelector('rect');
+      el.classList.add(stepIdx === steps.length - 1 ? 'hit' : 'visited');
+    });
+    s.edges.forEach(function(id){ document.getElementById(id).classList.add('walked'); });
+    status.textContent = s.msg;
+    stepIdx++;
+    if (stepIdx >= steps.length){ btn.textContent = 'Reset walkthrough'; }
+  });
+})();
+</script>
+ 
+</body>
+</html>
+ 
