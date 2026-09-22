@@ -1,8 +1,14 @@
+import React from 'react';
 
-export default function Home() {
+const page = async() => {
+
+  await new Promise((resolve,reject)=> setTimeout(resolve,3000))
+
   return (
-   <>
-   this is home page
-   </>
+    <div>
+      This is home page
+    </div>
   );
 }
+
+export default page;
