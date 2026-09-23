@@ -8,6 +8,7 @@ export const GET=async ()=>{
     })
 }
 
+
 export const POST=async(request:NextRequest)=>{
     const {name,email,password}=await request.json()
 
