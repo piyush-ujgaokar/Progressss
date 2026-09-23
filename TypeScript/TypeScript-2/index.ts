@@ -37,24 +37,40 @@
 
 
 
-type userObj={
-    name:string,
-    age:number,
-    salary:{
-        price:number,
-        currency:string
-    },
-    employeeId?:string
+// type userObj={
+//     name:string,
+//     age:number,
+//     salary:{
+//         price:number,
+//         currency:string
+//     },
+//     employeeId?:string
+// }
+
+// let obj:userObj={
+//     name:"piyush",
+//     age:21,
+//     salary:{
+//         price:150000,
+//         currency:"INR"
+//     }
+// }
+
+// console.log(obj);
+
+
+
+
+
+
+let a:user
+
+a={
+    name:"piyush"
 }
 
-let obj:userObj={
-    name:"piyush",
-    age:21,
-    salary:{
-        price:150000,
-        currency:"INR"
-    }
-}
+console.log(a);
 
-console.log(obj);
+
+
 
