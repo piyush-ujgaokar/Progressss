@@ -29,7 +29,6 @@ const paymentSchema = new mongoose.Schema(
     user: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: "user", 
-        required: true 
     },
     status: {
       type: String,
@@ -40,4 +39,6 @@ const paymentSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-module.exports = mongoose.model("payment", paymentSchema);
+const PaymentModel = mongoose.model("payment", paymentSchema);
+
+export default PaymentModel;

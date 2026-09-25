@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kapda Co. — Checkout</title>
+
+  <!-- 1. Razorpay's popup script -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <!-- axios, to call our own backend -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+</head>
+<body>
+  <h1>Canvas Tote Bag — ₹499</h1>
+  <label>
+    Product ID
+    <input id="productId" value="PUT_A_REAL_PRODUCT_ID_HERE" />
+  </label>
+  <button id="buyBtn">Buy Now</button>
+  <p id="status"></p>
+
+  <script>
+    const BACKEND_URL = "http://localhost:5000/api/v1";
+    const status = document.getElementById("status");
+
+    async function buy() {
+      const productId = document.getElementById("productId").value.trim();
+      if (!productId || productId === "PUT_A_REAL_PRODUCT_ID_HERE") {
+        status.innerText = "Enter a real product ID first.";
+        return;
+      }
+      try {
+        status.innerText = "Creating order...";
+        const { data: order } = await axios.post(`${BACKEND_URL}/payment/create/order/${productId}`);
+
+        const razorpay = new Razorpay({
+          key: order.keyId,
+          order_id: order.orderId,
+          amount: order.amount,
+          currency: order.currency,
+          name: "Kapda Co.",
+          description: "Secure product checkout",
+          handler: async function (response) {
+            try {
+              status.innerText = "Verifying payment...";
+              const verify = await axios.post(`${BACKEND_URL}/payment/verify`, response);
+              status.innerText = verify.data.status === "success" ? "Order confirmed!" : "Payment failed.";
+            } catch (error) {
+              status.innerText = error.response?.data?.message || "Payment verification failed.";
+            }
+          },
+        });
+
+        razorpay.on("payment.failed", (event) => {
+          status.innerText = event.error.description || "Payment failed.";
+        });
+        razorpay.open();
+      } catch (error) {
+        status.innerText = error.response?.data?.message || "Could not create payment order.";
+      }
+    }
+
+    document.getElementById("buyBtn").addEventListener("click", buy);
+  </script>
+
+</body>
+</html>

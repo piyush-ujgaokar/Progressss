@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import razorpay from "../config/razorpay.js";
 import productModel from "../models/product.model.js";
 import paymentModel from "../models/payment.model.js";
@@ -10,8 +11,8 @@ async function createOrder(req, res) {
   if (!product) return res.status(404).json({ message: "Product not found" });
 
   const order = await razorpay.orders.create({
-    amount: Math.round(product.price * 100), // paise!
-    currency: "INR",
+    amount: Math.round(product.price.amount * 100), // paise!
+    currency: product.price.currency,
     receipt: `rcpt_${Date.now()}`,
     notes: { productId: String(product._id) },
   });
@@ -21,7 +22,6 @@ async function createOrder(req, res) {
     amount: order.amount,
     currency: order.currency,
     product: product._id,
-    user: req.user._id,
     status: "pending",
   });
 
@@ -34,8 +34,7 @@ async function createOrder(req, res) {
 }
 
 
-
-async function verifyPayment(req, res) {
+export async function verifyPayment(req, res) {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
   const expected = crypto
@@ -56,3 +55,5 @@ async function verifyPayment(req, res) {
 
   res.json({ status: "success", orderId: payment.orderId });
 }
+
+export { createOrder };
