@@ -1,8 +1,17 @@
 import mongoose from "mongoose";
 
+interface IUser{
+    _id?:mongoose.Types.ObjectId
+    name:string,
+    image:string,
+    email:string,
+    password:string,
+    createdAt?:Date,
+    updatedAt?:Date
 
+}
 
-const userSchema=new mongoose.Schema({
+const userSchema=new mongoose.Schema<IUser>({
     name:{
         type:String,
         required:[true,"Name is required"],
@@ -15,12 +24,15 @@ const userSchema=new mongoose.Schema({
     password:{
         type:String,
         required:[true,"Password is required"]
+    },
+    image:{
+        type:String
     }
 },{
     timestamps:true
 })
 
-const userModel=mongoose.model("users",userSchema)
+const userModel=mongoose.models.users || mongoose.model("users",userSchema)
 
 
 export default userModel
