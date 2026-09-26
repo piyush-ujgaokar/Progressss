@@ -20,10 +20,9 @@ app.use(cors({
   credentials: true,
 }));
 
-// Register BEFORE app.use(express.json()) — the signature is over the RAW body
-app.post("/api/payment/webhook", express.raw({ type: "application/json" }),webHookRouter);
 app.use(express.json());
 
+// Register BEFORE app.use(express.json()) — the signature is over the RAW body
 app.use("/api", express.raw({ type: "application/json" }),webHookRouter)
 
 
