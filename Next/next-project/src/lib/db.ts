@@ -1,24 +1,7 @@
-import mongoose from "mongoose";
-import config from "./config";
-import { cache } from "react";
 
-let cached = global.mongoose;
-const connectToDb = async () => {
 
-       if (!cached) {
-      cached = global.mongoose = { conn: null, promise: null };
-    }
+const mongodbUrl=process.env.MONGO_URI
 
-    return cached.conn;
+if(!mongodbUrl) throw new Error("Mongo uri Is Missing")
 
-  try {
- 
-    cached.conn = await cached.promise;
-  } catch (err) {
-    console.log("Error while connecting DB",err);
-  }
-
-  return cached.conn
-};
-
-export default connectToDb;
+  

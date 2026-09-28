@@ -1,33 +1,32 @@
-import bcrypt from "bcryptjs";
-import mongoose from "mongoose";
+import bcrypt from 'bcryptjs'
+import mongoose, { models } from 'mongoose'
+
+
 
 interface IUser{
     _id?:mongoose.Types.ObjectId
     name:string,
-    image:string,
     email:string,
-    password:string,
+    password:string
     createdAt?:Date,
     updatedAt?:Date
-
 }
+
 
 const userSchema=new mongoose.Schema<IUser>({
     name:{
         type:String,
-        required:[true,"Name is required"],
+        required:[true,"Name is required"]
     },
     email:{
         type:String,
-        required:[true,"Email is required"],
+        required:[true,"Email is reqired"],
+        unique:true,
         match:[/^[^\s@]+@[^\s@]+\.[^\s@]+$/,"Email is Invalid"]
     },
     password:{
         type:String,
-        required:[true,"Password is required"]
-    },
-    image:{
-        type:String
+        required:[true,"Password is Required"]
     }
 },{
     timestamps:true
@@ -35,12 +34,14 @@ const userSchema=new mongoose.Schema<IUser>({
 
 
 userSchema.pre("save",async function(next){
-   this.password=await bcrypt.hash(this.password,10)
-   next()
+    if(this.isModified("password")){
+       this.password=await bcrypt.hash(this.password,10)
+    }
+    next()
 })
 
 
-const userModel=mongoose.models.users || mongoose.model("users",userSchema)
+const userModel=models?.User || model<IUser>("User",userSchema)
 
 
 export default userModel
