@@ -9,7 +9,7 @@ import { env } from "../config/config.js";
  * @returns {string}
  */
 export function signAccessToken(payload) {
-    return jwt.sign({ id: payload.id, email: payload.email }, env.ACCESS_TOKEN_SECRET, {
+    return jwt.sign({ id: payload.id, email: payload.email }, env.ACCESS_TOKEN, {
         expiresIn: "15m",
     });
 }
@@ -20,7 +20,7 @@ export function signAccessToken(payload) {
  * @returns {string}
  */
 export function signRefreshToken(payload) {
-    return jwt.sign({ id: payload.id, email: payload.email }, env.REFRESH_TOKEN_SECRET, {
+    return jwt.sign({ id: payload.id, email: payload.email }, env.REFRESH_TOKEN, {
         expiresIn: "7d",
     });
 }
@@ -32,7 +32,7 @@ export function signRefreshToken(payload) {
  * @throws {jwt.JsonWebTokenError | jwt.TokenExpiredError}
  */
 export function verifyAccessToken(token) {
-    return /** @type {TokenPayload} */ (jwt.verify(token, env.ACCESS_TOKEN_SECRET));
+    return /** @type {TokenPayload} */ (jwt.verify(token, env.ACCESS_TOKEN));
 }
 
 /**
@@ -42,5 +42,5 @@ export function verifyAccessToken(token) {
  * @throws {jwt.JsonWebTokenError | jwt.TokenExpiredError}
  */
 export function verifyRefreshToken(token) {
-    return /** @type {TokenPayload} */ (jwt.verify(token, env.REFRESH_TOKEN_SECRET));
+    return /** @type {TokenPayload} */ (jwt.verify(token, env.REFRESH_TOKEN));
 }

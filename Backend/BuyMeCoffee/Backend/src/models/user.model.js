@@ -28,19 +28,25 @@ const userSchema = new mongoose.Schema(
       trim: true,
       index: true,
     },
-    bio: { 
-        type: String, 
-        trim: true, 
-        maxlength: 160, 
-        default: "" 
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: 160,
+      default: "",
     },
-    avatarUrl: { 
-        type: String, 
-        trim: true, 
-        default: "https://ik.imagekit.io/piyushuj/default-avatar-profile-icon-social-media-user-vector-49816613%20(1).avif" 
+    avatarUrl: {
+      type: String,
+      trim: true,
+      default:
+        "https://ik.imagekit.io/piyushuj/default-avatar-profile-icon-social-media-user-vector-49816613%20(1).avif",
+    },
+    coffeePrice: {
+      type: Number,
+      min: 2000,
+      max: 50000,
+      default: 5000,
     },
     password: { type: String, required: true, minlength: 8, select: false },
-    refreshToken: { type: String, default: null, select: false },
   },
   { timestamps: true },
 );

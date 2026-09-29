@@ -29,31 +29,3 @@ export async function findUserByEmail(email) {
 export async function findUserById(id) {
     return UserModel.findById(id);
 }
-
-/**
- * Finds a user by id, including the stored refresh token.
- * @param {string} id
- * @returns {Promise<User | null>}
- */
-export async function findUserByIdWithRefreshToken(id) {
-    return UserModel.findById(id).select("+refreshToken");
-}
-
-/**
- * Persists a new refresh token for the user.
- * @param {string} id
- * @param {string} refreshToken
- * @returns {Promise<User | null>}
- */
-export async function updateRefreshToken(id, refreshToken) {
-    return UserModel.findByIdAndUpdate(id, { refreshToken }, { new: true });
-}
-
-/**
- * Clears the stored refresh token for the user.
- * @param {string} id
- * @returns {Promise<User | null>}
- */
-export async function clearRefreshToken(id) {
-    return UserModel.findByIdAndUpdate(id, { refreshToken: null }, { new: true });
-}
