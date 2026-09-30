@@ -1,4 +1,5 @@
 // import bcrypt from "bcryptjs";
+import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 
 interface IUser{
