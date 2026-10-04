@@ -1,13 +1,14 @@
 import express from "express"
 import userModel from "./models/user.model.js"
 import Redis from "ioredis"
+import { rateLimiter } from "./middleware/rateLimit.js"
 
 
 
 const app=express()
 app.use(express.json())
 
-const redis=new Redis(process.env.REDIS_URL)
+export const redis=new Redis(process.env.REDIS_URL)
 
 
 app.get("/",(req,res)=>{
@@ -36,7 +37,7 @@ app.post("/create",async (req,res)=>{
     })
 })
 
-app.get("/get",async(req,res)=>{
+app.get("/get",rateLimiter,async(req,res)=>{
     const user=await userModel.find()
 
     return res.status(200).json({
