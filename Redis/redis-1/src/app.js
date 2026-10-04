@@ -100,6 +100,8 @@ app.get("/verify-otp",async(req,res)=>{
         })
     }
 
+    await redis.del(`otp:${email}`)
+
      return res.status(200).json({
         message:"Otp verified Successfully",
         otp:cachedotp
