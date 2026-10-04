@@ -2,6 +2,8 @@ import express from "express"
 import userModel from "./models/user.model.js"
 import Redis from "ioredis"
 import { rateLimiter } from "./middleware/rateLimit.js"
+import { sendEmail } from "./config/sendEmail.js"
+import { emailQueue } from "../queue.js"
 
 
 
@@ -27,6 +29,8 @@ app.post("/create",async (req,res)=>{
     const user=await userModel.create({
         name,email,password
     })
+
+    await emailQueue.add("send-email",{email})
 
     res.status(201).json({
         message:"User created Successfully",
