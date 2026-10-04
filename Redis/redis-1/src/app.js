@@ -68,5 +68,47 @@ app.get("/redis-get",async(req,res)=>{
     })
 })
 
+app.post("/send-otp",async(req,res)=>{
+    const {email}=req.body
+
+    const otp=Math.floor(100000+Math.random()*90000).toString()
+    await redis.set(`otp:${email}`,otp,"EX",30)
+
+    return res.status(201).json({
+        message:"Otp Send Successfully",
+        otp:otp
+    })
+
+
+})
+
+app.get("/verify-otp",async(req,res)=>{
+
+    const {email,otp}=req.body
+
+    const cachedotp=await redis.get(`otp:${email}`)
+
+      if(!cachedotp){
+        return res.status(404).json({
+            message:"Otp not found or Expire"
+        })
+    }
+
+    if(cachedotp !== otp){
+        return res.status(400).json({
+            message:"Incorrect Otp"
+        })
+    }
+
+     return res.status(200).json({
+        message:"Otp verified Successfully",
+        otp:cachedotp
+    })
+
+
+
+
+
+})
 
 export default app
