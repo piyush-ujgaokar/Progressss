@@ -63,9 +63,7 @@ app.get("/redis-get",async(req,res)=>{
 
     const user=await userModel.find()
 
-
     await redis.set("user:all",JSON.stringify(user))
-
 
       return res.status(200).json({
         message:"All user fetched Successfully from MongoDbbbbbbbbb",

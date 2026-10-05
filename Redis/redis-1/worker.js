@@ -16,5 +16,5 @@ const worker = new Worker(
 
     console.log("Job compeleted");
   },
-  { connection },
+  { connection }
 );
