@@ -1,71 +1,31 @@
 import dotenv from "dotenv";
 dotenv.config();
-import { GoogleGenAI } from "@google/genai";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
 import express from "express";
 
-const app=express()
-app.use(express.json())
+const app = express();
+app.use(express.json());
 
-
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
+const googleLLM = new ChatGoogleGenerativeAI({
+  model: "gemini-3.5-flash-lite",
+  temperature: 2,
+  maxRetries: 0,
 });
-
-// // const main=async ()=>{
-   
-// //     console.log(response.text);
-    
-// // }
-
-// app.post("/",async(req,res)=>{
-//     const {text}=req.body
-
-//     console.log(text);
-    
-
-//  const response=await ai.models.generateContent({
-//         model:"gemini-2.5-flash",
-//         contents:text
-//     })
-
-//     return res.status(200).json({
-//         message:"Ai Response send",
-//         response:response.text
-//     })
-
-
-// })
-
-app.get("/",()=>{
-    return res.status(200).json({
-        message:"Hello From Ai"
-    })
-})
-
-
-
-//     console.log(response.text);
-
-// }
 
 app.post("/", async (req, res) => {
   const { text } = req.body;
 
   console.log(text);
 
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: text,
-    config: {
-      systemInstruction:
-        "you are servent of piyush sir ji, and your name is lodu bhagat",
-    },
-  });
+  const response = await googleLLM.invoke([
+    ["system", "your name is jarvis lodu"],
+    ["human", text]
+  ]);
 
   return res.status(200).json({
     message: "Ai Response send",
-    response: response.text,
+    ai: response.content,
   });
 });
 
