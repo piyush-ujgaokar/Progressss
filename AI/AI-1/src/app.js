@@ -6,21 +6,37 @@ import express from "express"
 
 
 const app=express()
+app.use(express.json())
 
 const ai=new GoogleGenAI({
     apiKey:process.env.GEMINI_API_KEY
 })
 
-const main=async ()=>{
-    const response=await ai.models.generateContent({
-    model:"gemini-2.5-flash",
-    contents:"Explain 5 features of express js"
+
+// const main=async ()=>{
+   
+//     console.log(response.text);
+    
+// }
+
+app.post("/",async(req,res)=>{
+    const {text}=req.body
+
+    console.log(text);
+    
+
+ const response=await ai.models.generateContent({
+        model:"gemini-2.5-flash",
+        contents:text
+    })
+
+    return res.status(200).json({
+        message:"Ai Response send",
+        response:response.text
+    })
+
+
 })
-console.log(response.text);
-
-}
-
-main()
 
 app.get("/",()=>{
     return res.status(200).json({
