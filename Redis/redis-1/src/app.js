@@ -37,6 +37,7 @@ app.post("/create",async (req,res)=>{
         user:{
             name:name,
             email:email
+            
         }
     })
 })
