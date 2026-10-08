@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { Annotation, MessagesAnnotation, StateGraph } from "@langchain/langgraph"
+import { Annotation, MemorySaver, MessagesAnnotation, StateGraph } from "@langchain/langgraph"
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import {TavilySearch} from "@langchain/tavily"
 
@@ -15,6 +15,8 @@ const tool=new TavilySearch({
   maxResults:5,
   topic:"general"
 })
+
+const checkPointer=new MemorySaver()
 
 const tools=[tool]
 const toolNode=new ToolNode(tools)
@@ -65,21 +67,24 @@ const graph=new StateGraph(MessagesAnnotation)
 .addEdge("tools","agent")
 .addConditionalEdges("agent",shouldContinue)
 .addEdge("agent","__end__")
-.compile()
+.compile({checkpointer:checkPointer})
 
 
 
 app.post("/", async (req, res) => {
   const { text } = req.body;
 
-  const response=await graph.invoke({
-    messages:[
+  const response=await graph.invoke(
+    {messages:[
       {
         role:"user",
         content:text
       }
-    ]
-  })
+    ]},
+    {configurable:{thread_id:"user123"}}
+
+
+)
 
   console.log("Response:--",response);
   
