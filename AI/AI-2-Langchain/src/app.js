@@ -22,7 +22,7 @@ app.post("/", async (req, res) => {
     ["system", "your name is jarvis lodu"],
     ["human", text]
   ]);
-
+  
   return res.status(200).json({
     message: "Ai Response send",
     ai: response.content,
