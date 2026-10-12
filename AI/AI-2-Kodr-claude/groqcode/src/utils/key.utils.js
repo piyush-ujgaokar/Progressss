@@ -73,3 +73,22 @@ export const saveGroqApiKeyToSettingsFile = async (apiKey) => {
     await fs.writeFile(settingFilePath,JSON.stringify(settings,null,2),"utf-8")
 
 }
+
+
+//get the GROQ API key from settings.json
+
+export const getGroqApiKeyFromSettingsFile = async () => {
+    if(!(await checkSettingsFileExists())){
+        throw new Error("settings.json file does not exist")
+    }
+
+    if(!(await checkGroqApiKeyExists())){
+        throw new Error("GROQ API Key does not exist in settings.json")
+    }
+
+    const settingFilePath=`${CONFIG_DIR}/settings.json`
+    const settingsContent=await fs.readFile(settingFilePath,"utf-8")
+    const settings=JSON.parse(settingsContent)
+    return settings.GROQ_API_KEY
+
+}
