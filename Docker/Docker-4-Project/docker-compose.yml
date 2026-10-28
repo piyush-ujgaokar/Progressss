@@ -3,28 +3,49 @@ services:
     image: mongo:8
     volumes:
       - url_db:/data/db
-  
+    ports:
+      - 8080:27017
+    networks:
+      - backend
+
   redis:
     image: redis:latest
     ports:
-      - "6379:6379"
+      - 8081:6379
     volumes:
       - url_redis:/data
+    networks:
+      - backend
 
   server:
     image: url-server
     ports:
-      - "3000:3000"
+      - 3000:3000
     volumes:
       - ./server/src/:/app/src
     environment:
-      - MONGO_URI=${MONGO_URI}
-      - REDIS_URL=${REDIS_URL}
-  
+      - MONGO_URI=${MONGO_URI:? MONGO_URI is not set}
+      - REDIS_URL=${REDIS_URL:? REDIS_URL is not set}
+    networks:
+      - backend
+      - frontend
+
   client:
     image: url-client
     ports:
-      - "5173:5173"
+      - 5173:5173
     volumes:
-      - ./client/src/:/app/src
-        
+      - ./client/src:/app/src
+    networks:
+      - frontend
+
+
+volumes:
+  url_db:
+  url_redis:
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
