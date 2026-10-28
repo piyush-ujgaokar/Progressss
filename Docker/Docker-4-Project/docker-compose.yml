@@ -1,0 +1,30 @@
+services:
+  mongo:
+    image: mongo:8
+    volumes:
+      - url_db:/data/db
+  
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - url_redis:/data
+
+  server:
+    image: url-server
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./server/src/:/app/src
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL}
+  
+  client:
+    image: url-client
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client/src/:/app/src
+        
