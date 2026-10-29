@@ -3,6 +3,11 @@ services:
     image: mongo:8
     volumes:
       - url_db:/data/db
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
     ports:
       - 8080:27017
     networks:
@@ -12,6 +17,11 @@ services:
     image: redis:latest
     ports:
       - 8081:6379
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 250M
     volumes:
       - url_redis:/data
     networks:
@@ -21,6 +31,11 @@ services:
     image: url-server
     ports:
       - 3000:3000
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 4G
     volumes:
       - ./server/src/:/app/src
     environment:
