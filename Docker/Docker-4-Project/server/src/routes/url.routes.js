@@ -4,6 +4,7 @@ import redis from "../config/redis.js"
 import { validateUrl } from "../validator/url.validator.js"
 import { generateId } from "../utils/id.utils.js"
 import { rateLimit } from "express-rate-limit"
+import config from "../config/config.js"
 
 const router = Router()
 
@@ -11,7 +12,8 @@ const router = Router()
 const getLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     limit: 100, // limit each IP to 100 requests per windowMs
-    message: "Too many requests from this IP, please try again later."
+    message: "Too many requests from this IP, please try again later.",
+    skip: () => config.URL_STRESS_TEST_MODE === "true",
 })
 
 const setLimiter = rateLimit({
@@ -31,7 +33,7 @@ const setLimiter = rateLimit({
  */
 router.post("/", setLimiter, validateUrl, async (req, res) => {
     const { originalUrl } = req.body
-    const shortUrlId = generateId()
+    const shortUrlId = await generateId()
 
     const url = await urlModel.create({
         originalUrl,
@@ -60,7 +62,8 @@ router.get("/:shortUrlId", getLimiter, async (req, res) => {
         }
 
         const data = JSON.parse(urlCache)
-        return res.redirect(302, data.originalUrl)
+         res.redirect(302, data.originalUrl)
+         await redis.hincrby("url_count", shortId, 1)
     }
 
     const url = await urlModel.findOne({ shortUrlId })
@@ -71,6 +74,7 @@ router.get("/:shortUrlId", getLimiter, async (req, res) => {
 
     await redis.set(`url:${shortUrlId}`, JSON.stringify(url), "EX", 5 * 60)
     res.redirect(302, url.originalUrl)
+     await redis.hincrby("url_count", shortId, 1)
 
 })
 

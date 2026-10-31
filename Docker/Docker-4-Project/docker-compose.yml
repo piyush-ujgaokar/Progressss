@@ -15,6 +15,7 @@ services:
 
   redis:
     image: redis:latest
+    command: ["redis-server", "--maxmemory-policy", "volatile-lru"]
     ports:
       - 8081:6379
     deploy:
@@ -41,6 +42,7 @@ services:
     environment:
       - MONGO_URI=${MONGO_URI:? MONGO_URI is not set}
       - REDIS_URL=${REDIS_URL:? REDIS_URL is not set}
+      - URL_STRESS_TEST_MODE=${URL_STRESS_TEST_MODE:? URL_STRESS_TEST_MODE is not set}
     networks:
       - backend
       - frontend
