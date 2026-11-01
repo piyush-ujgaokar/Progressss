@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 // const fibonacci = (n) => {
 //   if (n <= 1) return n;
