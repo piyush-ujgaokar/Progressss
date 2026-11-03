@@ -1,8 +1,12 @@
 
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App.jsx'
+import CoinCreate from './CoinCreate.jsx'
+import {Provider} from 'react-redux'
+import { store } from './store.jsx'
 
 createRoot(document.getElementById('root')).render(
-    <App />
+   <Provider store={store}>
+     <CoinCreate />
+   </Provider>
 )
