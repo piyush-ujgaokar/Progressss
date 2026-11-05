@@ -5,7 +5,7 @@ app.use(express.json())
 
 app.get("/health",(req,res)=>{
     res.status(200).json({
-        message:"Server is Healthy"
+        message:"Server is babdly health"
     })
 })
 
